@@ -16,6 +16,7 @@ REGION = "ap-southeast-2"
 EC2_CLIENT     = boto3.client("ec2", region_name = REGION)
 EC2_RESOURCE   = boto3.resource("ec2", region_name = REGION)
 PRICING_CLIENT = boto3.client("pricing", region_name = "us-east-1")
+SSM_CLIENT     = boto3.client("ssm", region_name = REGION)
 
 def instance_types_file():
   return "/tmp/instance_types.json"
@@ -87,6 +88,33 @@ def get_instance_type_price(instance_type):
   price_per_unit   =  next(iter(price_dimensions.values()))["pricePerUnit"]["USD"]
   return price_per_unit
 
+def get_latest_ami_id():
+  # Assume we just want the latest Amazon Linux 2 AMI
+  response = SSM_CLIENT.get_parameter(
+    Name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+  )
+  return response["Parameter"]["Value"]
+
+def launch_spot_instance(instance_type):
+  response = EC2_CLIENT.request_spot_instances(
+    SpotPrice           = instance_type["Price"],
+    LaunchSpecification = {
+      "ImageId":      get_latest_ami_id(),
+      "InstanceType": get_instance_type_name(instance_type)
+    }
+  )
+
+  print(response)
+
+def launch_on_demand_instance(instance_type):
+  response = EC2_RESOURCE.create_instances(
+    ImageId      = get_latest_ami_id(),
+    InstanceType = get_instance_type_name(instance_type),
+    MaxCount     = 1,
+    MinCount     = 1
+  )
+
+  print(response)
 
 def main():
   print(f"LOOKING FOR: {MIN_CPU}-{MAX_CPU} vCPU & {MIN_MEM}-{MAX_MEM} Memory (GiB)")
@@ -110,9 +138,16 @@ def main():
     instance_type["Price"] = get_instance_type_price(instance_type_name)
 
   # Find the instance type with the cheapest price
-  cheapest_instance_type = min(valid_instance_types, key = lambda x:x["Price"])
+  instance = min(valid_instance_types, key = lambda x:x["Price"])
     
-  print(f"TYPE: {get_instance_type_name(cheapest_instance_type)} - vCPU: {get_cpus(cheapest_instance_type)} - Mem: {get_mem(cheapest_instance_type)} GiB - Price: ${cheapest_instance_type['Price']} USD")
+  print(f"FOUND: {get_instance_type_name(instance)} - vCPU: {get_cpus(instance)} - Mem: {get_mem(instance)} GiB - Price: ${instance['Price']} USD")
+
+  if SPOT:
+    print(f"Attempting to launch {get_instance_type_name(instance)} spot instance")
+    launch_spot_instance(instance)
+  else:
+    print(f"Launching {get_instance_type_name(instance)} on-demand instance")
+    launch_on_demand_instance(instance)
 
 if __name__ == "__main__":
   main()
