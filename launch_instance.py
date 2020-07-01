@@ -10,7 +10,7 @@ MIN_CPU = 1
 MAX_CPU = 4
 MIN_MEM = 1
 MAX_MEM = 8
-SPOT = True
+SPOT = False
 REGION = "ap-southeast-2"
 
 EC2_CLIENT     = boto3.client("ec2", region_name = REGION)
@@ -133,6 +133,8 @@ def launch_spot_instance(instance_type):
     return return_value
 
 def launch_on_demand_instance(instance_type):
+  print(f"Launching '{get_instance_type_name(instance_type)}' on-demand instance in '{REGION}'")
+
   response = EC2_RESOURCE.create_instances(
     ImageId      = get_latest_ami_id(),
     InstanceType = get_instance_type_name(instance_type),
@@ -140,7 +142,8 @@ def launch_on_demand_instance(instance_type):
     MinCount     = 1
   )
 
-  return response[0]
+  instance_id = response[0].instance_id
+  print(f"Successfully launched on-demand instance: '{instance_id}' in '{REGION}'")
 
 def main():
   print(f"LOOKING FOR: {MIN_CPU}-{MAX_CPU} vCPU & {MIN_MEM}-{MAX_MEM} Memory (GiB)")
@@ -176,12 +179,10 @@ def main():
       instance_id = response["SpotInstanceRequests"][0]["InstanceId"]
       print(f"Successfully launched spot instance: '{instance_id}' in '{REGION}'")
     else:
-      print("Could not create spot instance. Launching on-demand instance instead.")
+      print("Could not create spot instance. Launching on-demand instance instead")
       launch_on_demand_instance(instance)
   else:
-    print(f"Launching '{get_instance_type_name(instance)}' on-demand instance in '{REGION}'")
-    instance_id = launch_on_demand_instance(instance).instance_id
-    print(f"Successfully launched on-demand instance: '{instance_id}' in '{REGION}'")
+    launch_on_demand_instance(instance)
 
 if __name__ == "__main__":
   main()
