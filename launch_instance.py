@@ -4,8 +4,8 @@ import json
 import os
 import pprint
 
-from lib.aws_regions import AWS_REGIONS
 from lib.aws_ssm import AWS_SSM
+from lib.aws_pricing import AWS_PRICING
 
 MIN_CPU = 1
 MAX_CPU = 4
@@ -16,7 +16,6 @@ REGION = "ap-southeast-2"
 
 EC2_CLIENT     = boto3.client("ec2", region_name = REGION)
 EC2_RESOURCE   = boto3.resource("ec2", region_name = REGION)
-PRICING_CLIENT = boto3.client("pricing", region_name = "us-east-1")
 
 def instance_types_file():
   return "/tmp/instance_types.json"
@@ -68,29 +67,6 @@ def evaulate_instance_type(instance_type):
 
   return valid
 
-def get_instance_type_price(instance_type):
-  # Filter assumes we only want:
-  #  - Linux OS
-  #  - No pre-installed software
-  #  - Shared tenancy
-
-  response = PRICING_CLIENT.get_products(
-    ServiceCode = "AmazonEC2",
-    Filters = [
-      { 'Type' :'TERM_MATCH', 'Field':'capacitystatus', 'Value': 'UnusedCapacityReservation' },
-      { 'Type' :'TERM_MATCH', 'Field':'instanceType', 'Value': instance_type },
-      { 'Type' :'TERM_MATCH', 'Field':'location', 'Value': AWS_REGIONS[REGION] },
-      { 'Type' :'TERM_MATCH', 'Field':'operatingSystem', 'Value':'Linux' },
-      { 'Type' :'TERM_MATCH', 'Field':'preInstalledSw', 'Value':'NA' },
-      { 'Type' :'TERM_MATCH', 'Field':'tenancy', 'Value':'Shared' },
-    ]
-  )
-
-  product          = json.loads(response["PriceList"][0])
-  price_dimensions = next(iter(product["terms"]["OnDemand"].values()))["priceDimensions"]
-  price_per_unit   =  next(iter(price_dimensions.values()))["pricePerUnit"]["USD"]
-  return price_per_unit
-
 def launch_spot_instance(instance_type, ami):
   return_value = ""
 
@@ -140,7 +116,7 @@ def launch_on_demand_instance(instance_type, ami):
 
 def main():
   latest_ami = AWS_SSM(REGION).get_latest_ami_id()
-
+  aws_pricing = AWS_PRICING(REGION)
 
   print(f"LOOKING FOR: {MIN_CPU}-{MAX_CPU} vCPU & {MIN_MEM}-{MAX_MEM} Memory (GiB)")
 
@@ -161,7 +137,7 @@ def main():
   # Find the cheapest on-demand instance
   for instance_type in valid_instance_types:
     instance_type_name = get_instance_type_name(instance_type)
-    instance_type["Price"] = get_instance_type_price(instance_type_name)
+    instance_type["Price"] = aws_pricing.get_instance_type_price(instance_type_name)
 
   # Find the instance type with the cheapest price
   instance = min(valid_instance_types, key = lambda x:x["Price"])
