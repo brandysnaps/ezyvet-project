@@ -18,7 +18,7 @@ EC2_RESOURCE   = boto3.resource("ec2", region_name = REGION)
 PRICING_CLIENT = boto3.client("pricing", region_name = "us-east-1")
 
 def instance_types_file():
-  return "./tmp/instance_types.json"
+  return "/tmp/instance_types.json"
 
 def update_instance_types():
   instance_types = EC2_CLIENT.describe_instance_types()
