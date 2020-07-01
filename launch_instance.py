@@ -130,7 +130,8 @@ def main():
   # Find valid instances we can choose from
   valid_instance_types = []
   for instance_type in instance_types:
-    if evaulate_instance_type(instance_type): valid_instance_types.append(instance_type)
+    if evaulate_instance_type(instance_type):
+      valid_instance_types.append(instance_type)
 
   # Find the cheapest on-demand instance
   for instance_type in valid_instance_types:
@@ -143,11 +144,11 @@ def main():
   print(f"FOUND: {get_instance_type_name(instance)} - vCPU: {get_cpus(instance)} - Mem: {get_mem(instance)} GiB - Price: ${instance['Price']} USD")
 
   if SPOT:
-    print(f"Attempting to launch {get_instance_type_name(instance)} spot instance")
-    launch_spot_instance(instance)
+    print(f"Attempting to launch '{get_instance_type_name(instance)}' spot instance")
+    # launch_spot_instance(instance)
   else:
-    print(f"Launching {get_instance_type_name(instance)} on-demand instance")
-    launch_on_demand_instance(instance)
+    print(f"Launching '{get_instance_type_name(instance)}' on-demand instance")
+    # launch_on_demand_instance(instance)
 
 if __name__ == "__main__":
   main()
