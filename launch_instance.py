@@ -40,6 +40,9 @@ def get_mem(instance_type):
 def get_instance_type_name(instance_type):
   return instance_type["InstanceType"]
 
+def get_instance_supported_usage_classes(instance_type):
+  return instance_type["SupportedUsageClasses"]
+
 def evaulate_instance_type(instance_type):
   valid                = True
   current_generation   = instance_type["CurrentGeneration"]
@@ -140,10 +143,11 @@ def main():
 
   # Find the instance type with the cheapest price
   instance = min(valid_instance_types, key = lambda x:x["Price"])
-    
+      
   print(f"FOUND: {get_instance_type_name(instance)} - vCPU: {get_cpus(instance)} - Mem: {get_mem(instance)} GiB - Price: ${instance['Price']} USD")
 
-  if SPOT:
+  # Lauch spot instance if requested and instance type supports it
+  if SPOT and "spot" in get_instance_supported_usage_classes(instance):
     print(f"Attempting to launch '{get_instance_type_name(instance)}' spot instance")
     # launch_spot_instance(instance)
   else:
