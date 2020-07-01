@@ -33,6 +33,10 @@ def main():
 
   # Find valid instances we can choose from
   valid_instance_types = aws_ec2.validate_instance_types(instance_types)
+  if not valid_instance_types:
+    print("No valid instance type found. Please try different input arguments")
+    print("See https://aws.amazon.com/ec2/instance-types/ for valid CPU/Memory combinations")
+    raise Exception
 
   # Find the price for valid instances
   valid_instance_types = aws_ec2.get_instance_prices(valid_instance_types)
