@@ -9,7 +9,6 @@ MIN_CPU = 1
 MAX_CPU = 4
 MIN_MEM = 1
 MAX_MEM = 8
-ON_DEMAND = True
 SPOT = False
 REGION = "ap-southeast-2"
 
@@ -99,15 +98,38 @@ def get_latest_ami_id():
   return response["Parameter"]["Value"]
 
 def launch_spot_instance(instance_type):
-  response = EC2_CLIENT.request_spot_instances(
-    SpotPrice           = instance_type["Price"],
-    LaunchSpecification = {
-      "ImageId":      get_latest_ami_id(),
-      "InstanceType": get_instance_type_name(instance_type)
-    }
-  )
+  response = ""
 
-  print(response)
+  # Only launch a spot instance if the instance type supports it
+  if "spot" in get_instance_supported_usage_classes(instance_type):
+    response = EC2_CLIENT.request_spot_instances(
+      SpotPrice           = instance_type["Price"],
+      LaunchSpecification = {
+        "ImageId":      get_latest_ami_id(),
+        "InstanceType": get_instance_type_name(instance_type)
+      }
+    )
+
+    # Wait for spot instance request to be fulfilled
+    request_id = response["SpotInstanceRequests"][0]["SpotInstanceRequestId"]
+    request_fulfilled_waiter = EC2_CLIENT.get_waiter("spot_instance_request_fulfilled")
+
+    try:
+      request_fulfilled_waiter.wait(
+        SpotInstanceRequestIds = [ request_id ]
+      )
+
+      response = EC2_CLIENT.describe_spot_instance_requests(
+        SpotInstanceRequestIds = [ request_id ]
+      )
+
+      return response
+    except botocore.exceptions.WaiterError:
+      return response
+
+  else:
+    print(f"Spot instance not supported for '{get_instance_type_name(instance_type)}'")
+    return response
 
 def launch_on_demand_instance(instance_type):
   response = EC2_RESOURCE.create_instances(
@@ -146,13 +168,18 @@ def main():
       
   print(f"FOUND: {get_instance_type_name(instance)} - vCPU: {get_cpus(instance)} - Mem: {get_mem(instance)} GiB - Price: ${instance['Price']} USD")
 
-  # Lauch spot instance if requested and instance type supports it
-  if SPOT and "spot" in get_instance_supported_usage_classes(instance):
-    print(f"Attempting to launch '{get_instance_type_name(instance)}' spot instance")
-    # launch_spot_instance(instance)
+  if SPOT:
+    print(f"Attempting to launch '{get_instance_type_name(instance)}' spot instance in '{REGION}'")
+    response = launch_spot_instance(instance)
+    if response:
+      instance_id = response["SpotInstanceRequests"][0]["InstanceId"]
+      print(f"Successfully launched spot instance: '{instance_id}' in '{REGION}'")
+    else:
+      print("Could not create spot instance. Launching on-demand instance instead.")
+      launch_on_demand_instance(instance)
   else:
-    print(f"Launching '{get_instance_type_name(instance)}' on-demand instance")
-    # launch_on_demand_instance(instance)
+    print(f"Launching '{get_instance_type_name(instance)}' on-demand instance in '{REGION}'")
+    launch_on_demand_instance(instance)
 
 if __name__ == "__main__":
   main()
