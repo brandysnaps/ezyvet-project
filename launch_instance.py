@@ -4,7 +4,8 @@ import json
 import os
 import pprint
 
-from constants import AWS_REGIONS
+from lib.aws_regions import AWS_REGIONS
+from lib.aws_ssm import AWS_SSM
 
 MIN_CPU = 1
 MAX_CPU = 4
@@ -16,7 +17,6 @@ REGION = "ap-southeast-2"
 EC2_CLIENT     = boto3.client("ec2", region_name = REGION)
 EC2_RESOURCE   = boto3.resource("ec2", region_name = REGION)
 PRICING_CLIENT = boto3.client("pricing", region_name = "us-east-1")
-SSM_CLIENT     = boto3.client("ssm", region_name = REGION)
 
 def instance_types_file():
   return "/tmp/instance_types.json"
@@ -91,14 +91,7 @@ def get_instance_type_price(instance_type):
   price_per_unit   =  next(iter(price_dimensions.values()))["pricePerUnit"]["USD"]
   return price_per_unit
 
-def get_latest_ami_id():
-  # Assume we just want the latest Amazon Linux 2 AMI
-  response = SSM_CLIENT.get_parameter(
-    Name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
-  )
-  return response["Parameter"]["Value"]
-
-def launch_spot_instance(instance_type):
+def launch_spot_instance(instance_type, ami):
   return_value = ""
 
   # Only launch a spot instance if the instance type supports it
@@ -106,7 +99,7 @@ def launch_spot_instance(instance_type):
     response = EC2_CLIENT.request_spot_instances(
       SpotPrice           = instance_type["Price"],
       LaunchSpecification = {
-        "ImageId":      get_latest_ami_id(),
+        "ImageId":      ami,
         "InstanceType": get_instance_type_name(instance_type)
       }
     )
@@ -132,11 +125,11 @@ def launch_spot_instance(instance_type):
     print(f"Spot instance not supported for '{get_instance_type_name(instance_type)}'")
     return return_value
 
-def launch_on_demand_instance(instance_type):
+def launch_on_demand_instance(instance_type, ami):
   print(f"Launching '{get_instance_type_name(instance_type)}' on-demand instance in '{REGION}'")
 
   response = EC2_RESOURCE.create_instances(
-    ImageId      = get_latest_ami_id(),
+    ImageId      = ami,
     InstanceType = get_instance_type_name(instance_type),
     MaxCount     = 1,
     MinCount     = 1
@@ -146,6 +139,9 @@ def launch_on_demand_instance(instance_type):
   print(f"Successfully launched on-demand instance: '{instance_id}' in '{REGION}'")
 
 def main():
+  latest_ami = AWS_SSM(REGION).get_latest_ami_id()
+
+
   print(f"LOOKING FOR: {MIN_CPU}-{MAX_CPU} vCPU & {MIN_MEM}-{MAX_MEM} Memory (GiB)")
 
   # Get the current list of instance types provided by AWS
@@ -174,15 +170,15 @@ def main():
 
   if SPOT:
     print(f"Attempting to launch '{get_instance_type_name(instance)}' spot instance in '{REGION}'")
-    response = launch_spot_instance(instance)
+    response = launch_spot_instance(instance, latest_ami)
     if response:
       instance_id = response["SpotInstanceRequests"][0]["InstanceId"]
       print(f"Successfully launched spot instance: '{instance_id}' in '{REGION}'")
     else:
       print("Could not create spot instance. Launching on-demand instance instead")
-      launch_on_demand_instance(instance)
+      launch_on_demand_instance(instance, latest_ami)
   else:
-    launch_on_demand_instance(instance)
+    launch_on_demand_instance(instance, latest_ami)
 
 if __name__ == "__main__":
   main()
