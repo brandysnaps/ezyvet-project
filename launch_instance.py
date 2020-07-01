@@ -10,7 +10,7 @@ MIN_CPU = 1
 MAX_CPU = 4
 MIN_MEM = 1
 MAX_MEM = 8
-SPOT = False
+SPOT = True
 REGION = "ap-southeast-2"
 
 EC2_CLIENT     = boto3.client("ec2", region_name = REGION)
@@ -99,7 +99,7 @@ def get_latest_ami_id():
   return response["Parameter"]["Value"]
 
 def launch_spot_instance(instance_type):
-  response = ""
+  return_value = ""
 
   # Only launch a spot instance if the instance type supports it
   if "spot" in get_instance_supported_usage_classes(instance_type):
@@ -120,17 +120,17 @@ def launch_spot_instance(instance_type):
         SpotInstanceRequestIds = [ request_id ]
       )
 
-      response = EC2_CLIENT.describe_spot_instance_requests(
+      return_value = EC2_CLIENT.describe_spot_instance_requests(
         SpotInstanceRequestIds = [ request_id ]
       )
 
-      return response
+      return return_value
     except botocore.exceptions.WaiterError:
-      return response
+      return return_value
 
   else:
     print(f"Spot instance not supported for '{get_instance_type_name(instance_type)}'")
-    return response
+    return return_value
 
 def launch_on_demand_instance(instance_type):
   response = EC2_RESOURCE.create_instances(
@@ -140,7 +140,7 @@ def launch_on_demand_instance(instance_type):
     MinCount     = 1
   )
 
-  print(response)
+  return response[0]
 
 def main():
   print(f"LOOKING FOR: {MIN_CPU}-{MAX_CPU} vCPU & {MIN_MEM}-{MAX_MEM} Memory (GiB)")
@@ -180,7 +180,8 @@ def main():
       launch_on_demand_instance(instance)
   else:
     print(f"Launching '{get_instance_type_name(instance)}' on-demand instance in '{REGION}'")
-    launch_on_demand_instance(instance)
+    instance_id = launch_on_demand_instance(instance).instance_id
+    print(f"Successfully launched on-demand instance: '{instance_id}' in '{REGION}'")
 
 if __name__ == "__main__":
   main()
