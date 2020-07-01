@@ -1,18 +1,8 @@
-import boto3
 import json
 import os
 
 from lib.aws_ec2 import AWS_EC2
-
-MIN_CPU = 1
-MAX_CPU = 4
-MIN_MEM = 1
-MAX_MEM = 8
-SPOT = True
-REGION = "ap-southeast-2"
-
-# EC2_CLIENT     = boto3.client("ec2", region_name = REGION)
-# EC2_RESOURCE   = boto3.resource("ec2", region_name = REGION)
+from lib.arg_parser import ARG_PARSER
 
 def instance_types_file():
   return "/tmp/instance_types.json"
@@ -28,9 +18,10 @@ def load_instance_types():
     return json.load(json_file)["InstanceTypes"]
 
 def main():
-  aws_ec2 = AWS_EC2(REGION, MIN_CPU, MAX_CPU, MIN_MEM, MAX_MEM)
+  args = ARG_PARSER().args
+  aws_ec2 = AWS_EC2(args.region, args.min_cpu, args.max_cpu, args.min_mem, args.max_mem)
 
-  print(f"LOOKING FOR: {MIN_CPU}-{MAX_CPU} vCPU & {MIN_MEM}-{MAX_MEM} Memory (GiB)")
+  print(f"LOOKING FOR: {args.min_cpu}-{args.max_cpu} vCPU & {args.min_mem}-{args.max_mem} Memory (GiB)")
 
   # Get the current list of instance types provided by AWS
   # if we don't already have it
@@ -55,12 +46,12 @@ def main():
 
   print(f"FOUND: {instance_type_name} - vCPU: {instance_cpu} - Mem: {instance_mem} GiB - Price: ${instance_price} USD")
 
-  if SPOT:
-    print(f"Attempting to launch '{instance_type_name}' spot instance in '{REGION}'")
+  if args.spot:
+    print(f"Attempting to launch '{instance_type_name}' spot instance in '{args.region}'")
     response = aws_ec2.launch_spot_instance(instance)
     if response:
       instance_id = response["SpotInstanceRequests"][0]["InstanceId"]
-      print(f"Successfully launched spot instance: '{instance_id}' in '{REGION}'")
+      print(f"Successfully launched spot instance: '{instance_id}' in '{args.region}'")
     else:
       print("Could not create spot instance. Launching on-demand instance instead")
       aws_ec2.launch_on_demand_instance(instance)
