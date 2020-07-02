@@ -1,6 +1,6 @@
 # ezyVet Project
 
-Refer to [scenario.md](doc/scenario.md) for project requirements.
+Refer to [Scenario](doc/scenario.md) for project requirements.
 
 ---
 
