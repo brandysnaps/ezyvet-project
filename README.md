@@ -95,16 +95,17 @@ $ docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY ezyvet-project -
 $ docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY ezyvet-project --max-cpu 32 --min-mem 2
 ```
 
-### Launch a Spot Instance
+### Launch an On-Demand Instance
 
 ```
-$ docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY ezyvet-project --spot
+$ docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY ezyvet-project --on-demand
 ```
 
 ---
 
 ## Assumptions
 
+- Launch spot instance by default to optimise for cost
 - Always use the latest Amazon Linux 2 AMI for instances
 - Always use 64-bit (x86) architecture
-- Set the max price of the spot instance request to the current on-demand price. This should always be cheaper than just launching an on-demand instance.
+- Set the max price of the spot instance request to the current on-demand price. This should always be cheaper than just launching an on-demand instance
