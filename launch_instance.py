@@ -50,7 +50,7 @@ def main():
 
   print(f"FOUND: {instance_type_name} - vCPU: {instance_cpu} - Mem: {instance_mem} GiB - Price: ${instance_price} USD")
 
-  if args.spot:
+  if not args.on_demand:
     print(f"Attempting to launch '{instance_type_name}' spot instance in '{args.region}'")
     response = aws_ec2.launch_spot_instance(instance)
     if response:

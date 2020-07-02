@@ -67,10 +67,10 @@ Grab your AWS access key and make sure you have the values for `AWS_ACCESS_KEY_I
 | Argument | Value |
 | --- | --- |
 | `--region` | ap-southeast-2 |
-| `--min_cpu` | 1 |
-| `--max_cpu` | 2 |
-| `--min_mem` | 1 |
-| `--max_mem` | 2 |
+| `--min-cpu` | 1 |
+| `--max-cpu` | 2 |
+| `--min-mem` | 1 |
+| `--max-mem` | 2 |
 | `--spot` | False |
 
 ---
@@ -92,7 +92,7 @@ $ docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY ezyvet-project -
 ### Specify vCPU/memory Requirements
 
 ```
-$ docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY ezyvet-project --max_cpu 32 --min_mem 2
+$ docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY ezyvet-project --max-cpu 32 --min-mem 2
 ```
 
 ### Launch a Spot Instance
@@ -100,3 +100,11 @@ $ docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY ezyvet-project -
 ```
 $ docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY ezyvet-project --spot
 ```
+
+---
+
+## Assumptions
+
+- Always use the latest Amazon Linux 2 AMI for instances
+- Always use 64-bit (x86) architecture
+- Set the max price of the spot instance request to the current on-demand price. This should always be cheaper than just launching an on-demand instance.
